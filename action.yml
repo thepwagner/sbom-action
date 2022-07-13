@@ -1,8 +1,8 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'SBOM Action'
+description: 'Diff SBOMs'
+author: 'Peter Wagner'
 inputs:
-  milliseconds: # change this
+  milliseconds: # FIXME: finish this
     required: true
     description: 'input description here'
     default: 'default value if applicable'

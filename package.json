@@ -1,8 +1,8 @@
 {
-  "name": "typescript-action",
+  "name": "sbom-action",
   "version": "0.0.0",
   "private": true,
-  "description": "TypeScript template action",
+  "description": "SBOM action",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
@@ -15,17 +15,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
+    "url": "git+https://github.com/thepwagner/sbom-action.git"
   },
   "keywords": [
     "actions",
     "node",
     "setup"
   ],
-  "author": "",
+  "author": "Peter Wagner <git@pwagner.net>",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.6.0"
+    "@actions/core": "^1.6.0",
+    "@actions/exec": "^1.1.1",
+    "@cyclonedx/cyclonedx-library": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^16.10.5",
@@ -38,6 +40,6 @@
     "js-yaml": "^4.1.0",
     "prettier": "2.5.1",
     "ts-jest": "^27.1.2",
-    "typescript": "^4.4.4"
+    "typescript": "^4.7.4"
   }
 }
