@@ -1,16 +1,14 @@
 import * as core from '@actions/core'
-import {wait} from './wait'
+import * as github from '@actions/github'
+import type {WebhookEvent} from '@octokit/webhooks-types'
+import {newHandler} from './action'
 
 async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
-    core.debug(`Waiting ${ms} milliseconds ...`) // debug is only output if you set the secret `ACTIONS_STEP_DEBUG` to true
+    const handler = newHandler()
 
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
-
-    core.setOutput('time', new Date().toTimeString())
+    const event = github.context.payload as WebhookEvent
+    await handler.onEvent(github.context.eventName, event)
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }

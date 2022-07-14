@@ -2,10 +2,15 @@ name: 'SBOM Action'
 description: 'Diff SBOMs'
 author: 'Peter Wagner'
 inputs:
-  milliseconds: # FIXME: finish this
-    required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+  sbom:
+    description: 'local path to sbom for comparison'
+    default: 'cyclonedx.json'
+  base-image:
+    description: 'remote image for sbom for comparison'
+    default: ghcr.io/${{github.repository}}:latest
+  token:
+    default: ${{ github.token }}
+
 runs:
   using: 'node16'
   main: 'dist/index.js'

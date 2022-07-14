@@ -1,0 +1,24 @@
+name: 'integration'
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "🌎 Setup Cosign"
+        uses: sigstore/cosign-installer@7e0881f8fe90b25e305bbf0309761e9314607e25 # tag=v2.4.0
+      - name: "🌎 Logging in to Docker Registry"
+        uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b # tag=v2.0.0
+        with:
+          registry: ghcr.io
+          username: ${{github.repository_owner}}
+          password: ${{secrets.WAPWAGNER_TOKEN}}
+
+      - uses: actions/checkout@v3
+      - uses: ./
+        with:
+          sbom: "__tests__/fixtures/cyclonedx-integration-hacked.json"
+          base-image: "ghcr.io/thepwagner-org/debian-bullseye:9ec73cc052f9acf1ec792ff5d23e1b14d50fc585"
+          token: "${{secrets.WAPWAGNER_TOKEN}}"
