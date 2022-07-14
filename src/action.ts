@@ -15,7 +15,7 @@ export class Handler {
   ) {}
 
   async onEvent(eventName: string, event: WebhookEvent): Promise<void> {
-    core.debug(`Received "${eventName}" event: ${JSON.stringify(event)}`)
+    core.info(`Received "${eventName}" event: ${JSON.stringify(event)}`)
 
     switch (eventName) {
       case 'pull_request':

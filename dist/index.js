@@ -44,7 +44,7 @@ class Handler {
         this.gh = gh;
     }
     async onEvent(eventName, event) {
-        core.debug(`Received "${eventName}" event: ${JSON.stringify(event)}`);
+        core.info(`Received "${eventName}" event: ${JSON.stringify(event)}`);
         switch (eventName) {
             case 'pull_request':
                 return this.onPullRequestEvent(event);
