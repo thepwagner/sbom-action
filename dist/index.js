@@ -212,15 +212,15 @@ class GitHub {
     constructor(gh) {
         this.gh = gh;
     }
-    async postDiff(pr, base, head) {
+    async postDiff(event, base, head) {
         core.info(`Comparing SBOMs ${base} ${head}`);
         const diff = this.purlDiff(base, head);
         core.info(`Compared SBOMs ${JSON.stringify(diff)}`);
         // TODO: render more diff-like
         await this.gh.rest.issues.createComment({
-            owner: pr.repository.owner.login,
-            repo: pr.repository.name,
-            issue_number: pr.pull_request.number,
+            owner: event.repository.owner.login,
+            repo: event.repository.name,
+            issue_number: event.pull_request.number,
             body: `\`\`\`\n${JSON.stringify(diff, null, 2)}\n\`\`\``
         });
     }

@@ -19,6 +19,6 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ./
         with:
-          sbom: "__tests__/fixtures/cyclonedx.json"
+          sbom: "__tests__/fixtures/cyclonedx-integration-hacked.json"
           base-image: "ghcr.io/thepwagner-org/debian-bullseye:9ec73cc052f9acf1ec792ff5d23e1b14d50fc585"
           token: "${{secrets.WAPWAGNER_TOKEN}}"

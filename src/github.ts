@@ -6,7 +6,11 @@ import type {PullRequestEvent} from '@octokit/webhooks-types'
 export class GitHub {
   constructor(private readonly gh: Octokit) {}
 
-  async postDiff(pr: PullRequestEvent, base: SBOM, head: SBOM): Promise<void> {
+  async postDiff(
+    event: PullRequestEvent,
+    base: SBOM,
+    head: SBOM
+  ): Promise<void> {
     core.info(`Comparing SBOMs ${base} ${head}`)
 
     const diff = this.purlDiff(base, head)
@@ -14,9 +18,9 @@ export class GitHub {
 
     // TODO: render more diff-like
     await this.gh.rest.issues.createComment({
-      owner: pr.repository.owner.login,
-      repo: pr.repository.name,
-      issue_number: pr.pull_request.number,
+      owner: event.repository.owner.login,
+      repo: event.repository.name,
+      issue_number: event.pull_request.number,
       body: `\`\`\`\n${JSON.stringify(diff, null, 2)}\n\`\`\``
     })
   }
