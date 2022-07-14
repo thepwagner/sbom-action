@@ -103,10 +103,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CosignSBOMLoader = void 0;
 const cyclonedx_1 = __nccwpck_require__(2348);
 const exec_1 = __nccwpck_require__(1514);
+// TODO: verification options for the attestation - issued by the Actions workflow
 class CosignSBOMLoader {
     constructor(fromAttestations = true) {
         this.fromAttestations = fromAttestations;
         this.cyclonedx = new cyclonedx_1.CycloneDXParser();
+        /** Wrap @actions/exec, awkwardly accessible for tests to replace. */
         this.exec = async (commandLine, args) => {
             let out = '';
             await (0, exec_1.exec)(commandLine, args, {
@@ -127,7 +129,7 @@ class CosignSBOMLoader {
         if (this.fromAttestations) {
             return this.loadFromAttestation(imageID);
         }
-        throw new Error('FIXME: implement loading attached SBOMs');
+        throw new Error('TODO: implement loading attached SBOMs');
     }
     async loadFromAttestation(imageID) {
         const out = await this.exec('cosign', ['verify-attestation', imageID]);
@@ -136,6 +138,7 @@ class CosignSBOMLoader {
         const predicate = JSON.parse(payload);
         switch (predicate.predicateType) {
             case 'cosign.sigstore.dev/attestation/v1':
+                // Assume custom predicates are CycloneDX, since SPDX has been supported longer
                 return this.cyclonedx.parse(predicate.predicate['Data']);
             case 'https://cyclonedx.org/schema':
                 // TODO: untested, cosign has not released this yet - https://github.com/sigstore/cosign/pull/1977
@@ -159,8 +162,13 @@ exports.CosignSBOMLoader = CosignSBOMLoader;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CycloneDXParser = void 0;
 class CycloneDXParser {
+    /** Parse from string. */
     parse(sbom) {
         const bom = JSON.parse(sbom);
+        return this.extract(bom);
+    }
+    /** Extract from object. */
+    extract(bom) {
         if (!bom?.metadata?.component) {
             throw new Error('metadata component required');
         }

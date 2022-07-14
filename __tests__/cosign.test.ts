@@ -1,7 +1,7 @@
 import {CosignSBOMLoader} from '../src/cosign'
 import {describe, expect, jest, it} from '@jest/globals'
 import {fn} from 'jest-mock'
-import {readFileSync} from 'fs'
+import {readFile} from 'fs/promises'
 
 describe('CosignSBOMLoader', () => {
   describe('fromAttestation', () => {
@@ -10,7 +10,7 @@ describe('CosignSBOMLoader', () => {
     loader.exec = mockExec as () => Promise<string>
 
     it('loads cyclonedx from custom predicate', async () => {
-      const attestation = readFileSync(
+      const attestation = await readFile(
         '__tests__/fixtures/cyclonedx.customattestation.json',
         'utf8'
       )

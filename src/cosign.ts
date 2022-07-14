@@ -2,9 +2,12 @@ import {SBOM, SBOMLoader} from './sbom'
 import {CycloneDXParser} from './cyclonedx'
 import {exec} from '@actions/exec'
 
+// TODO: verification options for the attestation - issued by the Actions workflow
+
 export class CosignSBOMLoader implements SBOMLoader {
   private cyclonedx = new CycloneDXParser()
 
+  /** Wrap @actions/exec, awkwardly accessible for tests to replace. */
   exec = async (commandLine: string, args: string[]): Promise<string> => {
     let out = ''
     await exec(commandLine, args, {
@@ -27,7 +30,7 @@ export class CosignSBOMLoader implements SBOMLoader {
     if (this.fromAttestations) {
       return this.loadFromAttestation(imageID)
     }
-    throw new Error('FIXME: implement loading attached SBOMs')
+    throw new Error('TODO: implement loading attached SBOMs')
   }
 
   private async loadFromAttestation(imageID: string): Promise<SBOM> {
@@ -39,6 +42,7 @@ export class CosignSBOMLoader implements SBOMLoader {
 
     switch (predicate.predicateType) {
       case 'cosign.sigstore.dev/attestation/v1':
+        // Assume custom predicates are CycloneDX, since SPDX has been supported longer
         return this.cyclonedx.parse(predicate.predicate['Data'])
       case 'https://cyclonedx.org/schema':
         // TODO: untested, cosign has not released this yet - https://github.com/sigstore/cosign/pull/1977
