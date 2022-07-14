@@ -16,12 +16,25 @@ export class GitHub {
     const diff = this.purlDiff(base, head)
     core.info(`Compared SBOMs ${JSON.stringify(diff)}`)
 
-    // TODO: render more diff-like
+    const purls = Object.keys(diff)
+      .sort((a, b) => a.localeCompare(b))
+      .map(purl => {
+        const prefix = diff[purl] ? '+' : '-'
+        return `${prefix}${purl}`
+      })
+
+    let body = '### Packages diff\n\n'
+    body += `Base: \`${base.imageID}\`\n`
+    body += `Head: \`${head.imageID}\`\n`
+    body += '\n\n```\n'
+    body += purls.join('\n')
+    body += '\n```\n'
+
     await this.gh.rest.issues.createComment({
       owner: event.repository.owner.login,
       repo: event.repository.name,
       issue_number: event.pull_request.number,
-      body: `\`\`\`\n${JSON.stringify(diff, null, 2)}\n\`\`\``
+      body
     })
   }
 

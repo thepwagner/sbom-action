@@ -15,8 +15,8 @@
       "component": {
         "bom-ref": "fade0f7734c18338",
         "type": "container",
-        "name": "ghcr.io/thepwagner-org/debian-bullseye:9ec73cc052f9acf1ec792ff5d23e1b14d50fc585",
-        "version": "sha256:27c13a70b81a3d6058ff0a456481012f97f34e0130a2711c5090418332c7383f"
+        "name": "ghcr.io/thepwagner-org/debian-bullseye:50fc5859ec73cc052f9acf1ec792ff5d23e1b14d",
+        "version": "sha256:7383f27c13a70b81a3d6058ff0a456481012f97f34e0130a2711c5090418332c"
       }
     },
     "components": [

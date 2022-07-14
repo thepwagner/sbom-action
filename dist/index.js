@@ -161,6 +161,11 @@ exports.CycloneDXParser = void 0;
 class CycloneDXParser {
     parse(sbom) {
         const bom = JSON.parse(sbom);
+        if (!bom?.metadata?.component) {
+            throw new Error('metadata component required');
+        }
+        const imageID = bom.metadata.component.name;
+        const imageDigest = bom.metadata.component.version || '';
         const packages = [];
         for (const c of bom.components) {
             if (!c.purl) {
@@ -169,7 +174,7 @@ class CycloneDXParser {
             packages.push({ purl: c.purl.toString() });
         }
         packages.sort((a, b) => a.purl.localeCompare(b.purl));
-        return { packages };
+        return { imageID, imageDigest, packages };
     }
 }
 exports.CycloneDXParser = CycloneDXParser;
@@ -216,12 +221,23 @@ class GitHub {
         core.info(`Comparing SBOMs ${base} ${head}`);
         const diff = this.purlDiff(base, head);
         core.info(`Compared SBOMs ${JSON.stringify(diff)}`);
-        // TODO: render more diff-like
+        const purls = Object.keys(diff)
+            .sort((a, b) => a.localeCompare(b))
+            .map(purl => {
+            const prefix = diff[purl] ? '+' : '-';
+            return `${prefix}${purl}`;
+        });
+        let body = '### Packages diff\n\n';
+        body += `Base: \`${base.imageID}\`\n`;
+        body += `Head: \`${head.imageID}\`\n`;
+        body += '\n\n```\n';
+        body += purls.join('\n');
+        body += '\n```\n';
         await this.gh.rest.issues.createComment({
             owner: event.repository.owner.login,
             repo: event.repository.name,
             issue_number: event.pull_request.number,
-            body: `\`\`\`\n${JSON.stringify(diff, null, 2)}\n\`\`\``
+            body
         });
     }
     purlDiff(base, head) {

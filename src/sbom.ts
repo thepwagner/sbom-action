@@ -3,6 +3,8 @@ export type Package = {
 }
 
 export type SBOM = {
+  imageID: string
+  imageDigest: string
   packages: Package[]
 }
 
