@@ -13,7 +13,6 @@ export class CosignSBOMLoader implements SBOMLoader {
           out += data.toString()
         }
       },
-      silent: true,
       env: {
         PATH: process.env.PATH || '',
         COSIGN_EXPERIMENTAL: '1'

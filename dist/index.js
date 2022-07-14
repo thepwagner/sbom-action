@@ -61,7 +61,9 @@ class Handler {
             default:
                 return;
         }
-        const localSBOMdata = await (0, promises_1.readFile)(core.getInput('sbom'), 'utf8');
+        const localSBOMPath = core.getInput('sbom');
+        const localSBOMdata = await (0, promises_1.readFile)(localSBOMPath, 'utf8');
+        core.info(`Loading local SBOM: ${localSBOMPath}`);
         const localSBOM = this.parser.parse(localSBOMdata);
         const baseImageID = core.getInput('base-image');
         core.info(`Loading base image: ${baseImageID}`);
@@ -113,7 +115,6 @@ class CosignSBOMLoader {
                         out += data.toString();
                     }
                 },
-                silent: true,
                 env: {
                     PATH: process.env.PATH || '',
                     COSIGN_EXPERIMENTAL: '1'

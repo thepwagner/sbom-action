@@ -36,7 +36,9 @@ export class Handler {
         return
     }
 
-    const localSBOMdata = await readFile(core.getInput('sbom'), 'utf8')
+    const localSBOMPath = core.getInput('sbom')
+    const localSBOMdata = await readFile(localSBOMPath, 'utf8')
+    core.info(`Loading local SBOM: ${localSBOMPath}`)
     const localSBOM = this.parser.parse(localSBOMdata)
 
     const baseImageID = core.getInput('base-image')
