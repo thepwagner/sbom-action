@@ -10,6 +10,8 @@ describe('CycloneDXParser', () => {
     const sbom = parser.parse(doc)
 
     expect(sbom.packages).toHaveLength(96)
-    expect(sbom.packages[0].purl).toBe('pkg:deb/debian/adduser@3.118?arch=all&distro=debian-11')
+    expect(sbom.packages[0].purl).toBe(
+      'pkg:deb/debian/adduser@3.118?arch=all&distro=debian-11'
+    )
   })
 })

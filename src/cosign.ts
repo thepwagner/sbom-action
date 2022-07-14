@@ -26,24 +26,28 @@ export class CosignSBOMLoader implements SBOMLoader {
 
   async load(imageID: string): Promise<SBOM> {
     if (this.fromAttestations) {
-      const out = await this.exec('cosign', ['verify-attestation', imageID])
-
-      const attestation = JSON.parse(out) as Attestation
-      const payload = Buffer.from(attestation.payload, 'base64').toString()
-      const predicate = JSON.parse(payload) as Predicate
-
-      switch (predicate.predicateType) {
-        case 'cosign.sigstore.dev/attestation/v1':
-          return this.cyclonedx.parse(predicate.predicate['Data'])
-        case 'https://cyclonedx.org/schema':
-          // FIXME: untested, cosign has not released this yet - https://github.com/sigstore/cosign/pull/1977
-          return this.cyclonedx.parse(predicate.predicate['Data'])
-        default:
-          throw new Error(`Unsupported predicate: ${predicate.predicateType}`)
-      }
+      return this.loadFromAttestation(imageID)
     }
+    throw new Error('FIXME: implement loading attached SBOMs')
+  }
 
-    throw new Error('kaboom')
+  private async loadFromAttestation(imageID: string): Promise<SBOM> {
+    const out = await this.exec('cosign', ['verify-attestation', imageID])
+
+    const attestation = JSON.parse(out) as Attestation
+    const payload = Buffer.from(attestation.payload, 'base64').toString()
+    const predicate = JSON.parse(payload) as Predicate
+
+    switch (predicate.predicateType) {
+      case 'cosign.sigstore.dev/attestation/v1':
+        return this.cyclonedx.parse(predicate.predicate['Data'])
+      case 'https://cyclonedx.org/schema':
+        // TODO: untested, cosign has not released this yet - https://github.com/sigstore/cosign/pull/1977
+        return this.cyclonedx.parse(predicate.predicate['Data'])
+      // TODO: spdx
+      default:
+        throw new Error(`Unsupported predicate: ${predicate.predicateType}`)
+    }
   }
 }
 

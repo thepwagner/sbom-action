@@ -1,0 +1,16 @@
+name: 'integration'
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "🌎 Setup Cosign"
+        uses: sigstore/cosign-installer@7e0881f8fe90b25e305bbf0309761e9314607e25 # tag=v2.4.0
+
+      - uses: actions/checkout@v3
+      - uses: ./
+        with:
+          sbom: "__tests__/fixtures/cyclonedx.json"
+          base-image: "ghcr.io/debian-bullseye:latest"
