@@ -8100,7 +8100,7 @@ const Endpoints = {
   }
 };
 
-const VERSION = "6.0.1";
+const VERSION = "6.0.2";
 
 function endpointsToMethods(octokit, endpointsMap) {
   const newMethods = {};
