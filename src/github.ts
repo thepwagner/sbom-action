@@ -27,7 +27,7 @@ export class GitHub {
     body += `Base: \`${base.imageID}\`\n`
     body += `Head: \`${head.imageID}\`\n\n`
 
-    if (purls) {
+    if (purls.length) {
       body += '\n```\n'
       body += purls.join('\n')
       body += '\n```\n'
