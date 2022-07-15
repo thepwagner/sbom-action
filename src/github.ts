@@ -25,10 +25,13 @@ export class GitHub {
 
     let body = '### Packages diff\n\n'
     body += `Base: \`${base.imageID}\`\n`
-    body += `Head: \`${head.imageID}\`\n`
-    body += '\n\n```\n'
-    body += purls.join('\n')
-    body += '\n```\n'
+    body += `Head: \`${head.imageID}\`\n\n`
+
+    if (purls) {
+      body += '\n```\n'
+      body += purls.join('\n')
+      body += '\n```\n'
+    }
 
     await this.gh.rest.issues.createComment({
       owner: event.repository.owner.login,
