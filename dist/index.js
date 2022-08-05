@@ -141,8 +141,7 @@ class CosignSBOMLoader {
                 // Assume custom predicates are CycloneDX, since SPDX has been supported longer
                 return this.cyclonedx.parse(predicate.predicate['Data']);
             case 'https://cyclonedx.org/schema':
-                // TODO: untested, cosign has not released this yet - https://github.com/sigstore/cosign/pull/1977
-                return this.cyclonedx.parse(predicate.predicate['Data']);
+                return this.cyclonedx.extract(predicate.predicate['Data']);
             // TODO: spdx
             default:
                 throw new Error(`Unsupported predicate: ${predicate.predicateType}`);
