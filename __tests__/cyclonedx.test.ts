@@ -16,7 +16,7 @@ describe('CycloneDXParser', () => {
       'sha256:27c13a70b81a3d6058ff0a456481012f97f34e0130a2711c5090418332c7383f'
     )
     expect(sbom.packages).toHaveLength(96)
-    expect(sbom.packages[0].purl).toBe(
+    expect(sbom.packages[0].purl.toString()).toBe(
       'pkg:deb/debian/adduser@3.118?arch=all&distro=debian-11'
     )
   })
@@ -33,7 +33,7 @@ describe('CycloneDXParser', () => {
       'sha256:b0d53c872fd640c2af2608ba1e693cfc7dedea30abcd8f584b23d583ec6dadc7'
     )
     expect(sbom.packages).toHaveLength(96)
-    expect(sbom.packages[0].purl).toBe(
+    expect(sbom.packages[0].purl.toString()).toBe(
       'pkg:deb/debian/adduser@3.118?distro=debian-11.2'
     )
     expect(sbom.vulnerabilities).toHaveLength(62)

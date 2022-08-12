@@ -1,9 +1,27 @@
-export type Package = {
-  purl: string
+import {PackageURL} from 'packageurl-js'
+
+export interface HasKey {
+  key(): string
 }
 
-export type Vulnerability = {
-  cve: string
+export class Package implements HasKey {
+  constructor(readonly purl: PackageURL) {}
+
+  key(): string {
+    return (
+      (this.purl.type || '') +
+      (this.purl.namespace || '') +
+      (this.purl.name || '')
+    )
+  }
+}
+
+export class Vulnerability implements HasKey {
+  constructor(readonly cve: string) {}
+
+  key(): string {
+    return this.cve
+  }
 }
 
 export type SBOM = {

@@ -44,21 +44,22 @@ export class CycloneDXParser implements SBOMParser {
     }
 
     const packages = [] as Package[]
-    for (const c of bom.components) {
-      if (!c.purl) {
+    for (const component of bom.components) {
+      if (!component.purl) {
         continue
       }
-      packages.push({purl: c.purl})
+      const purl = PackageURL.fromString(component.purl)
+      packages.push(new Package(purl))
     }
-    packages.sort((a, b) => a.purl.localeCompare(b.purl))
+    packages.sort((a, b) => a.purl.toString().localeCompare(b.purl.toString()))
 
     const vulnerabilities = [] as Vulnerability[]
     if (bom.vulnerabilities) {
-      for (const v of bom.vulnerabilities) {
-        if (!v.id) {
+      for (const vuln of bom.vulnerabilities) {
+        if (!vuln.id) {
           continue
         }
-        vulnerabilities.push({cve: v.id})
+        vulnerabilities.push(new Vulnerability(vuln.id))
       }
       vulnerabilities.sort((a, b) => a.cve.localeCompare(b.cve))
     }

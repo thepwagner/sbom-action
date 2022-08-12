@@ -160,6 +160,7 @@ exports.CosignSBOMLoader = CosignSBOMLoader;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CycloneDXParser = exports.CycloneBOM = void 0;
+const sbom_1 = __nccwpck_require__(6228);
 const packageurl_js_1 = __nccwpck_require__(8915);
 class CycloneBOM {
     constructor() {
@@ -198,20 +199,21 @@ class CycloneDXParser {
             imageDigest = purl.version || '';
         }
         const packages = [];
-        for (const c of bom.components) {
-            if (!c.purl) {
+        for (const component of bom.components) {
+            if (!component.purl) {
                 continue;
             }
-            packages.push({ purl: c.purl });
+            const purl = packageurl_js_1.PackageURL.fromString(component.purl);
+            packages.push(new sbom_1.Package(purl));
         }
-        packages.sort((a, b) => a.purl.localeCompare(b.purl));
+        packages.sort((a, b) => a.purl.toString().localeCompare(b.purl.toString()));
         const vulnerabilities = [];
         if (bom.vulnerabilities) {
-            for (const v of bom.vulnerabilities) {
-                if (!v.id) {
+            for (const vuln of bom.vulnerabilities) {
+                if (!vuln.id) {
                     continue;
                 }
-                vulnerabilities.push({ cve: v.id });
+                vulnerabilities.push(new sbom_1.Vulnerability(vuln.id));
             }
             vulnerabilities.sort((a, b) => a.cve.localeCompare(b.cve));
         }
@@ -219,6 +221,53 @@ class CycloneDXParser {
     }
 }
 exports.CycloneDXParser = CycloneDXParser;
+
+
+/***/ }),
+
+/***/ 2484:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Diff = exports.DiffEntry = void 0;
+class DiffEntry {
+    constructor(left, right) {
+        this.left = left;
+        this.right = right;
+    }
+}
+exports.DiffEntry = DiffEntry;
+class Diff {
+    constructor(left, right) {
+        this.added = [];
+        this.removed = [];
+        this.changed = [];
+        const leftMapped = new Map(left.map(t => [t.key(), t]));
+        const rightMapped = new Map(right.map(t => [t.key(), t]));
+        for (const [key, value] of leftMapped) {
+            const rightValue = rightMapped.get(key);
+            if (rightValue === undefined) {
+                this.removed.push(value);
+            }
+            else if (rightValue !== value) {
+                this.changed.push(new DiffEntry(value, rightValue));
+            }
+        }
+        for (const [key, value] of rightMapped) {
+            if (!leftMapped.has(key)) {
+                this.added.push(value);
+            }
+        }
+    }
+    empty() {
+        return (this.added.length === 0 &&
+            this.removed.length === 0 &&
+            this.changed.length === 0);
+    }
+}
+exports.Diff = Diff;
 
 
 /***/ }),
@@ -254,42 +303,63 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GitHub = void 0;
 const core = __importStar(__nccwpck_require__(2186));
+const diff_1 = __nccwpck_require__(2484);
 class GitHub {
     constructor(gh) {
         this.gh = gh;
     }
     async postDiff(event, base, head) {
         core.info(`Comparing SBOMs ${base} ${head}`);
+        const pkgDiff = new diff_1.Diff(base.packages, head.packages);
+        const vulnDiff = new diff_1.Diff(base.vulnerabilities, head.vulnerabilities);
+        if (pkgDiff.empty() && vulnDiff.empty()) {
+            return;
+        }
         let body = '### SBOM diff\n\n';
         body += `Base: \`${base.imageID}\`\n`;
         body += `Head: \`${head.imageID}\`\n\n`;
-        const pkgDiff = this.purlDiff(base, head);
         core.info(`Compared SBOM packages ${JSON.stringify(pkgDiff)}`);
-        const purls = Object.keys(pkgDiff)
-            .sort((a, b) => a.localeCompare(b))
-            .map(purl => {
-            const prefix = pkgDiff[purl] ? '+' : '-';
-            return `${prefix}${purl}`;
-        });
-        if (purls.length) {
-            body += '#### Packages\n\n';
-            body += '\n```\n';
-            body += purls.join('\n');
-            body += '\n```\n';
+        if (!pkgDiff.empty()) {
+            body += '#### 📦 Packages\n\n';
+            if (pkgDiff.added.length > 0) {
+                body += '**Added**:\n\n';
+                for (const pkg of pkgDiff.added) {
+                    body += `- \`${pkg.purl.toString()}\`\n`;
+                }
+                body += '\n';
+            }
+            if (pkgDiff.removed.length > 0) {
+                body += '**Removed**:\n\n';
+                for (const pkg of pkgDiff.removed) {
+                    body += `- \`${pkg.purl.toString()}\`\n`;
+                }
+                body += '\n';
+            }
+            if (pkgDiff.changed.length > 0) {
+                body += '**Changed**:\n\n';
+                for (const pkg of pkgDiff.changed) {
+                    body += `- \`${pkg.left.key()}\` - \`${pkg.left.purl.version}\` to \`${pkg.right.purl.version}\`\n`;
+                }
+                body += '\n';
+            }
         }
-        const vulnDiff = this.vulnDiff(base, head);
         core.info(`Compared SBOM vulnerabilities ${JSON.stringify(vulnDiff)}`);
-        const cves = Object.keys(vulnDiff)
-            .sort((a, b) => a.localeCompare(b))
-            .map(cve => {
-            const prefix = vulnDiff[cve] ? '+' : '-';
-            return `${prefix}${cve}`;
-        });
-        if (cves.length) {
-            body += '#### Vulnerabilities\n\n';
-            body += '\n```\n';
-            body += cves.join('\n');
-            body += '\n```\n';
+        if (!pkgDiff.empty()) {
+            body += '#### ⚠️ Vulnerabilities\n\n';
+            if (vulnDiff.added.length > 0) {
+                body += '**Detected**:\n\n';
+                for (const vuln of vulnDiff.added) {
+                    body += `- \`${vuln.cve}\`\n`;
+                }
+                body += '\n';
+            }
+            if (vulnDiff.removed.length > 0) {
+                body += '**Fixed**:\n\n';
+                for (const vuln of vulnDiff.removed) {
+                    body += `- \`${vuln.cve}\`\n`;
+                }
+                body += '\n';
+            }
         }
         await this.gh.rest.issues.createComment({
             owner: event.repository.owner.login,
@@ -297,38 +367,6 @@ class GitHub {
             issue_number: event.pull_request.number,
             body
         });
-    }
-    purlDiff(base, head) {
-        const purlDiff = {};
-        for (const pkg of head.packages) {
-            const existing = base.packages.find(basePkg => basePkg.purl === pkg.purl);
-            if (!existing) {
-                purlDiff[pkg.purl] = true;
-            }
-        }
-        for (const pkg of base.packages) {
-            const retained = head.packages.find(headPkg => headPkg.purl === pkg.purl);
-            if (!retained) {
-                purlDiff[pkg.purl] = false;
-            }
-        }
-        return purlDiff;
-    }
-    vulnDiff(base, head) {
-        const vulnDiff = {};
-        for (const vuln of head.vulnerabilities) {
-            const existing = base.vulnerabilities.find(baseVuln => baseVuln.cve === vuln.cve);
-            if (!existing) {
-                vulnDiff[vuln.cve] = true;
-            }
-        }
-        for (const vuln of base.vulnerabilities) {
-            const retained = head.vulnerabilities.find(headVuln => headVuln.cve === vuln.cve);
-            if (!retained) {
-                vulnDiff[vuln.cve] = false;
-            }
-        }
-        return vulnDiff;
     }
 }
 exports.GitHub = GitHub;
@@ -380,6 +418,37 @@ async function run() {
     }
 }
 run();
+
+
+/***/ }),
+
+/***/ 6228:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Vulnerability = exports.Package = void 0;
+class Package {
+    constructor(purl) {
+        this.purl = purl;
+    }
+    key() {
+        return ((this.purl.type || '') +
+            (this.purl.namespace || '') +
+            (this.purl.name || ''));
+    }
+}
+exports.Package = Package;
+class Vulnerability {
+    constructor(cve) {
+        this.cve = cve;
+    }
+    key() {
+        return this.cve;
+    }
+}
+exports.Vulnerability = Vulnerability;
 
 
 /***/ }),
