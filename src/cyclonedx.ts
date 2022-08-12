@@ -49,6 +49,7 @@ export class CycloneDXParser implements SBOMParser {
         continue
       }
       const purl = PackageURL.fromString(component.purl)
+      purl.qualifiers = null // the 'distro' qualifier is annoying, don't need any of them
       packages.push(new Package(purl))
     }
     packages.sort((a, b) => a.purl.toString().localeCompare(b.purl.toString()))

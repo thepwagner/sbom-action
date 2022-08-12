@@ -204,6 +204,7 @@ class CycloneDXParser {
                 continue;
             }
             const purl = packageurl_js_1.PackageURL.fromString(component.purl);
+            purl.qualifiers = null; // the 'distro' qualifier is annoying, don't need any of them
             packages.push(new sbom_1.Package(purl));
         }
         packages.sort((a, b) => a.purl.toString().localeCompare(b.purl.toString()));

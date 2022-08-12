@@ -17,7 +17,7 @@ describe('CycloneDXParser', () => {
     )
     expect(sbom.packages).toHaveLength(96)
     expect(sbom.packages[0].purl.toString()).toBe(
-      'pkg:deb/debian/adduser@3.118?arch=all&distro=debian-11'
+      'pkg:deb/debian/adduser@3.118'
     )
   })
 
@@ -34,7 +34,7 @@ describe('CycloneDXParser', () => {
     )
     expect(sbom.packages).toHaveLength(96)
     expect(sbom.packages[0].purl.toString()).toBe(
-      'pkg:deb/debian/adduser@3.118?distro=debian-11.2'
+      'pkg:deb/debian/adduser@3.118'
     )
     expect(sbom.vulnerabilities).toHaveLength(62)
     expect(sbom.vulnerabilities[0].cve).toBe('CVE-2004-0971')
