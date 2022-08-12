@@ -322,27 +322,27 @@ class GitHub {
         core.info(`Compared SBOM packages ${JSON.stringify(pkgDiff)}`);
         if (!pkgDiff.empty()) {
             body += '#### 📦 Packages\n\n';
-            if (pkgDiff.added.length > 0) {
-                body += '**Added**:\n\n';
-                for (const pkg of pkgDiff.added) {
-                    body += `- \`${pkg.purl.toString()}\`\n`;
-                }
-                body += '\n';
+            body += '| Package | Old | New |\n';
+            body += '|---------|-----|-----|\n';
+            for (const pkg of pkgDiff.added) {
+                body += `| \`${pkg.key()}\` `;
+                body += `| `;
+                body += `| \`${pkg.purl.version}\` `;
+                body += `|\n`;
             }
-            if (pkgDiff.removed.length > 0) {
-                body += '**Removed**:\n\n';
-                for (const pkg of pkgDiff.removed) {
-                    body += `- \`${pkg.purl.toString()}\`\n`;
-                }
-                body += '\n';
+            for (const pkg of pkgDiff.removed) {
+                body += `| \`${pkg.key()}\` `;
+                body += `| \`${pkg.purl.version}\` `;
+                body += `| `;
+                body += `|\n`;
             }
-            if (pkgDiff.changed.length > 0) {
-                body += '**Changed**:\n\n';
-                for (const pkg of pkgDiff.changed) {
-                    body += `- \`${pkg.left.key()}\` - \`${pkg.left.purl.version}\` to \`${pkg.right.purl.version}\`\n`;
-                }
-                body += '\n';
+            for (const pkg of pkgDiff.changed) {
+                body += `| \`${pkg.left.key()}\` `;
+                body += `| \`${pkg.left.purl.version}\` `;
+                body += `| \`${pkg.right.purl.version}\` `;
+                body += `|\n`;
             }
+            body += '\n\n';
         }
         core.info(`Compared SBOM vulnerabilities ${JSON.stringify(vulnDiff)}`);
         if (!pkgDiff.empty()) {
@@ -424,20 +424,19 @@ run();
 /***/ }),
 
 /***/ 6228:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Vulnerability = exports.Package = void 0;
+const packageurl_js_1 = __nccwpck_require__(8915);
 class Package {
     constructor(purl) {
         this.purl = purl;
     }
     key() {
-        return ((this.purl.type || '') +
-            (this.purl.namespace || '') +
-            (this.purl.name || ''));
+        return new packageurl_js_1.PackageURL(this.purl.type, this.purl.namespace, this.purl.name, null, null, null).toString();
     }
 }
 exports.Package = Package;

@@ -29,29 +29,30 @@ export class GitHub {
     if (!pkgDiff.empty()) {
       body += '#### 📦 Packages\n\n'
 
-      if (pkgDiff.added.length > 0) {
-        body += '**Added**:\n\n'
-        for (const pkg of pkgDiff.added) {
-          body += `- \`${pkg.purl.toString()}\`\n`
-        }
-        body += '\n'
+      body += '| Package | Old | New |\n'
+      body += '|---------|-----|-----|\n'
+
+      for (const pkg of pkgDiff.added) {
+        body += `| \`${pkg.key()}\` `
+        body += `| `
+        body += `| \`${pkg.purl.version}\` `
+        body += `|\n`
       }
-      if (pkgDiff.removed.length > 0) {
-        body += '**Removed**:\n\n'
-        for (const pkg of pkgDiff.removed) {
-          body += `- \`${pkg.purl.toString()}\`\n`
-        }
-        body += '\n'
+
+      for (const pkg of pkgDiff.removed) {
+        body += `| \`${pkg.key()}\` `
+        body += `| \`${pkg.purl.version}\` `
+        body += `| `
+        body += `|\n`
       }
-      if (pkgDiff.changed.length > 0) {
-        body += '**Changed**:\n\n'
-        for (const pkg of pkgDiff.changed) {
-          body += `- \`${pkg.left.key()}\` - \`${
-            pkg.left.purl.version
-          }\` to \`${pkg.right.purl.version}\`\n`
-        }
-        body += '\n'
+
+      for (const pkg of pkgDiff.changed) {
+        body += `| \`${pkg.left.key()}\` `
+        body += `| \`${pkg.left.purl.version}\` `
+        body += `| \`${pkg.right.purl.version}\` `
+        body += `|\n`
       }
+      body += '\n\n'
     }
 
     core.info(`Compared SBOM vulnerabilities ${JSON.stringify(vulnDiff)}`)

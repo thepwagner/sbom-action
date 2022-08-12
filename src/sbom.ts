@@ -8,11 +8,14 @@ export class Package implements HasKey {
   constructor(readonly purl: PackageURL) {}
 
   key(): string {
-    return (
-      (this.purl.type || '') +
-      (this.purl.namespace || '') +
-      (this.purl.name || '')
-    )
+    return new PackageURL(
+      this.purl.type,
+      this.purl.namespace,
+      this.purl.name,
+      null,
+      null,
+      null
+    ).toString()
   }
 }
 
