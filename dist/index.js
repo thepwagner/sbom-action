@@ -142,7 +142,7 @@ class CosignSBOMLoader {
                 return this.cyclonedx.parse(predicate.predicate['Data']);
             case 'https://cyclonedx.org/schema':
                 return this.cyclonedx.extract(predicate.predicate['Data']);
-            // TODO: spdx
+            // TODO: spdx?
             default:
                 throw new Error(`Unsupported predicate: ${predicate.predicateType}`);
         }
@@ -159,8 +159,24 @@ exports.CosignSBOMLoader = CosignSBOMLoader;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CycloneDXParser = void 0;
+exports.CycloneDXParser = exports.CycloneBOM = void 0;
 const packageurl_js_1 = __nccwpck_require__(8915);
+class CycloneBOM {
+    constructor() {
+        this.components = [];
+        this.vulnerabilities = [];
+    }
+}
+exports.CycloneBOM = CycloneBOM;
+class Metadata {
+}
+class Component {
+    constructor(name) {
+        this.name = name;
+    }
+}
+class CycloneVulnerability {
+}
 class CycloneDXParser {
     /** Parse from string. */
     parse(sbom) {
@@ -173,23 +189,20 @@ class CycloneDXParser {
             throw new Error('metadata component required');
         }
         const imageID = bom.metadata.component.name;
-        let imageDigest;
+        let imageDigest = '';
         if (bom.metadata.component.version) {
             imageDigest = bom.metadata.component.version;
         }
         else if (bom.metadata.component.purl) {
-            const purl = packageurl_js_1.PackageURL.fromString(bom.metadata.component.purl.toString());
+            const purl = packageurl_js_1.PackageURL.fromString(bom.metadata.component.purl);
             imageDigest = purl.version || '';
-        }
-        else {
-            imageDigest = '';
         }
         const packages = [];
         for (const c of bom.components) {
             if (!c.purl) {
                 continue;
             }
-            packages.push({ purl: c.purl.toString() });
+            packages.push({ purl: c.purl });
         }
         packages.sort((a, b) => a.purl.localeCompare(b.purl));
         const vulnerabilities = [];

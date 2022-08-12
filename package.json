@@ -28,7 +28,6 @@
     "@actions/core": "1.9.1",
     "@actions/exec": "1.1.1",
     "@actions/github": "5.0.3",
-    "@cyclonedx/cyclonedx-library": "github:thepwagner/cyclonedx-javascript-library#model-bom-vulnerabilities",
     "@octokit/rest": "19.0.3",
     "@octokit/webhooks-types": "6.3.5",
     "mustache": "4.2.0",
