@@ -226,12 +226,13 @@ exports.CycloneDXParser = CycloneDXParser;
 /***/ }),
 
 /***/ 2484:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Diff = exports.DiffEntry = void 0;
+const util_1 = __nccwpck_require__(3837);
 class DiffEntry {
     constructor(left, right) {
         this.left = left;
@@ -251,7 +252,7 @@ class Diff {
             if (rightValue === undefined) {
                 this.removed.push(value);
             }
-            else if (rightValue !== value) {
+            else if (!(0, util_1.isDeepStrictEqual)(rightValue, value)) {
                 this.changed.push(new DiffEntry(value, rightValue));
             }
         }
