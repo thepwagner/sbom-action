@@ -1,4 +1,5 @@
-import {Package, SBOM, SBOMParser} from './sbom'
+import {Package, Vulnerability, SBOM, SBOMParser} from './sbom'
+import {PackageURL} from 'packageurl-js'
 import * as cdx from '@cyclonedx/cyclonedx-library'
 
 export class CycloneDXParser implements SBOMParser {
@@ -14,7 +15,16 @@ export class CycloneDXParser implements SBOMParser {
       throw new Error('metadata component required')
     }
     const imageID = bom.metadata.component.name
-    const imageDigest = bom.metadata.component.version || ''
+
+    let imageDigest: string
+    if (bom.metadata.component.version) {
+      imageDigest = bom.metadata.component.version
+    } else if (bom.metadata.component.purl) {
+      const purl = PackageURL.fromString(bom.metadata.component.purl.toString())
+      imageDigest = purl.version || ''
+    } else {
+      imageDigest = ''
+    }
 
     const packages = [] as Package[]
     for (const c of bom.components) {
@@ -25,6 +35,17 @@ export class CycloneDXParser implements SBOMParser {
     }
     packages.sort((a, b) => a.purl.localeCompare(b.purl))
 
-    return {imageID, imageDigest, packages}
+    const vulnerabilities = [] as Vulnerability[]
+    if (bom.vulnerabilities) {
+      for (const v of bom.vulnerabilities) {
+        if (!v.id) {
+          continue
+        }
+        vulnerabilities.push({cve: v.id})
+      }
+      vulnerabilities.sort((a, b) => a.cve.localeCompare(b.cve))
+    }
+
+    return {imageID, imageDigest, packages, vulnerabilities}
   }
 }

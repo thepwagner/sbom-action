@@ -13,23 +13,37 @@ export class GitHub {
   ): Promise<void> {
     core.info(`Comparing SBOMs ${base} ${head}`)
 
-    const diff = this.purlDiff(base, head)
-    core.info(`Compared SBOMs ${JSON.stringify(diff)}`)
-
-    const purls = Object.keys(diff)
-      .sort((a, b) => a.localeCompare(b))
-      .map(purl => {
-        const prefix = diff[purl] ? '+' : '-'
-        return `${prefix}${purl}`
-      })
-
-    let body = '### Packages diff\n\n'
+    let body = '### SBOM diff\n\n'
     body += `Base: \`${base.imageID}\`\n`
     body += `Head: \`${head.imageID}\`\n\n`
 
+    const pkgDiff = this.purlDiff(base, head)
+    core.info(`Compared SBOM packages ${JSON.stringify(pkgDiff)}`)
+    const purls = Object.keys(pkgDiff)
+      .sort((a, b) => a.localeCompare(b))
+      .map(purl => {
+        const prefix = pkgDiff[purl] ? '+' : '-'
+        return `${prefix}${purl}`
+      })
     if (purls.length) {
+      body += '#### Packages\n\n'
       body += '\n```\n'
       body += purls.join('\n')
+      body += '\n```\n'
+    }
+
+    const vulnDiff = this.vulnDiff(base, head)
+    core.info(`Compared SBOM vulnerabilities ${JSON.stringify(vulnDiff)}`)
+    const cves = Object.keys(vulnDiff)
+      .sort((a, b) => a.localeCompare(b))
+      .map(cve => {
+        const prefix = vulnDiff[cve] ? '+' : '-'
+        return `${prefix}${cve}`
+      })
+    if (cves.length) {
+      body += '#### Vulnerabilities\n\n'
+      body += '\n```\n'
+      body += cves.join('\n')
       body += '\n```\n'
     }
 
@@ -59,5 +73,29 @@ export class GitHub {
     }
 
     return purlDiff
+  }
+
+  private vulnDiff(base: SBOM, head: SBOM): Record<string, boolean> {
+    const vulnDiff = {} as Record<string, boolean>
+
+    for (const vuln of head.vulnerabilities) {
+      const existing = base.vulnerabilities.find(
+        baseVuln => baseVuln.cve === vuln.cve
+      )
+      if (!existing) {
+        vulnDiff[vuln.cve] = true
+      }
+    }
+
+    for (const vuln of base.vulnerabilities) {
+      const retained = head.vulnerabilities.find(
+        headVuln => headVuln.cve === vuln.cve
+      )
+      if (!retained) {
+        vulnDiff[vuln.cve] = false
+      }
+    }
+
+    return vulnDiff
   }
 }
