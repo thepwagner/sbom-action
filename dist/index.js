@@ -142,7 +142,7 @@ class CosignSBOMLoader {
                 return this.cyclonedx.parse(predicate.predicate['Data']);
             case 'https://cyclonedx.org/schema':
                 return this.cyclonedx.extract(predicate.predicate['Data']);
-            // TODO: spdx
+            // TODO: spdx?
             default:
                 throw new Error(`Unsupported predicate: ${predicate.predicateType}`);
         }
@@ -154,12 +154,30 @@ exports.CosignSBOMLoader = CosignSBOMLoader;
 /***/ }),
 
 /***/ 2348:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CycloneDXParser = void 0;
+exports.CycloneDXParser = exports.CycloneBOM = void 0;
+const sbom_1 = __nccwpck_require__(6228);
+const packageurl_js_1 = __nccwpck_require__(8915);
+class CycloneBOM {
+    constructor() {
+        this.components = [];
+        this.vulnerabilities = [];
+    }
+}
+exports.CycloneBOM = CycloneBOM;
+class Metadata {
+}
+class Component {
+    constructor(name) {
+        this.name = name;
+    }
+}
+class CycloneVulnerability {
+}
 class CycloneDXParser {
     /** Parse from string. */
     parse(sbom) {
@@ -172,19 +190,86 @@ class CycloneDXParser {
             throw new Error('metadata component required');
         }
         const imageID = bom.metadata.component.name;
-        const imageDigest = bom.metadata.component.version || '';
+        let imageDigest = '';
+        if (bom.metadata.component.version) {
+            imageDigest = bom.metadata.component.version;
+        }
+        else if (bom.metadata.component.purl) {
+            const purl = packageurl_js_1.PackageURL.fromString(bom.metadata.component.purl);
+            imageDigest = purl.version || '';
+        }
         const packages = [];
-        for (const c of bom.components) {
-            if (!c.purl) {
+        for (const component of bom.components) {
+            if (!component.purl) {
                 continue;
             }
-            packages.push({ purl: c.purl.toString() });
+            const purl = packageurl_js_1.PackageURL.fromString(component.purl);
+            purl.qualifiers = null; // the 'distro' qualifier is annoying, don't need any of them
+            packages.push(new sbom_1.Package(purl));
         }
-        packages.sort((a, b) => a.purl.localeCompare(b.purl));
-        return { imageID, imageDigest, packages };
+        packages.sort((a, b) => a.purl.toString().localeCompare(b.purl.toString()));
+        const vulnerabilities = [];
+        if (bom.vulnerabilities) {
+            for (const vuln of bom.vulnerabilities) {
+                if (!vuln.id) {
+                    continue;
+                }
+                vulnerabilities.push(new sbom_1.Vulnerability(vuln.id));
+            }
+            vulnerabilities.sort((a, b) => a.cve.localeCompare(b.cve));
+        }
+        return { imageID, imageDigest, packages, vulnerabilities };
     }
 }
 exports.CycloneDXParser = CycloneDXParser;
+
+
+/***/ }),
+
+/***/ 2484:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Diff = exports.DiffEntry = void 0;
+const util_1 = __nccwpck_require__(3837);
+class DiffEntry {
+    constructor(left, right) {
+        this.left = left;
+        this.right = right;
+    }
+}
+exports.DiffEntry = DiffEntry;
+class Diff {
+    constructor(left, right) {
+        this.added = [];
+        this.removed = [];
+        this.changed = [];
+        const leftMapped = new Map(left.map(t => [t.key(), t]));
+        const rightMapped = new Map(right.map(t => [t.key(), t]));
+        for (const [key, value] of leftMapped) {
+            const rightValue = rightMapped.get(key);
+            if (rightValue === undefined) {
+                this.removed.push(value);
+            }
+            else if (!(0, util_1.isDeepStrictEqual)(rightValue, value)) {
+                this.changed.push(new DiffEntry(value, rightValue));
+            }
+        }
+        for (const [key, value] of rightMapped) {
+            if (!leftMapped.has(key)) {
+                this.added.push(value);
+            }
+        }
+    }
+    empty() {
+        return (this.added.length === 0 &&
+            this.removed.length === 0 &&
+            this.changed.length === 0);
+    }
+}
+exports.Diff = Diff;
 
 
 /***/ }),
@@ -220,27 +305,63 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GitHub = void 0;
 const core = __importStar(__nccwpck_require__(2186));
+const diff_1 = __nccwpck_require__(2484);
 class GitHub {
     constructor(gh) {
         this.gh = gh;
     }
     async postDiff(event, base, head) {
         core.info(`Comparing SBOMs ${base} ${head}`);
-        const diff = this.purlDiff(base, head);
-        core.info(`Compared SBOMs ${JSON.stringify(diff)}`);
-        const purls = Object.keys(diff)
-            .sort((a, b) => a.localeCompare(b))
-            .map(purl => {
-            const prefix = diff[purl] ? '+' : '-';
-            return `${prefix}${purl}`;
-        });
-        let body = '### Packages diff\n\n';
+        const pkgDiff = new diff_1.Diff(base.packages, head.packages);
+        const vulnDiff = new diff_1.Diff(base.vulnerabilities, head.vulnerabilities);
+        if (pkgDiff.empty() && vulnDiff.empty()) {
+            return;
+        }
+        let body = '### SBOM diff\n\n';
         body += `Base: \`${base.imageID}\`\n`;
         body += `Head: \`${head.imageID}\`\n\n`;
-        if (purls.length) {
-            body += '\n```\n';
-            body += purls.join('\n');
-            body += '\n```\n';
+        core.info(`Compared SBOM packages ${JSON.stringify(pkgDiff)}`);
+        if (!pkgDiff.empty()) {
+            body += '#### 📦 Packages\n\n';
+            body += '| Package | Old | New |\n';
+            body += '|---------|-----|-----|\n';
+            for (const pkg of pkgDiff.added) {
+                body += `| \`${pkg.key()}\` `;
+                body += `| `;
+                body += `| \`${pkg.purl.version}\` `;
+                body += `|\n`;
+            }
+            for (const pkg of pkgDiff.removed) {
+                body += `| \`${pkg.key()}\` `;
+                body += `| \`${pkg.purl.version}\` `;
+                body += `| `;
+                body += `|\n`;
+            }
+            for (const pkg of pkgDiff.changed) {
+                body += `| \`${pkg.left.key()}\` `;
+                body += `| \`${pkg.left.purl.version}\` `;
+                body += `| \`${pkg.right.purl.version}\` `;
+                body += `|\n`;
+            }
+            body += '\n\n';
+        }
+        core.info(`Compared SBOM vulnerabilities ${JSON.stringify(vulnDiff)}`);
+        if (!pkgDiff.empty()) {
+            body += '#### ⚠️ Vulnerabilities\n\n';
+            if (vulnDiff.added.length > 0) {
+                body += '**Detected**:\n\n';
+                for (const vuln of vulnDiff.added) {
+                    body += `- \`${vuln.cve}\`\n`;
+                }
+                body += '\n';
+            }
+            if (vulnDiff.removed.length > 0) {
+                body += '**Fixed**:\n\n';
+                for (const vuln of vulnDiff.removed) {
+                    body += `- \`${vuln.cve}\`\n`;
+                }
+                body += '\n';
+            }
         }
         await this.gh.rest.issues.createComment({
             owner: event.repository.owner.login,
@@ -248,22 +369,6 @@ class GitHub {
             issue_number: event.pull_request.number,
             body
         });
-    }
-    purlDiff(base, head) {
-        const purlDiff = {};
-        for (const pkg of head.packages) {
-            const existing = base.packages.find(basePkg => basePkg.purl === pkg.purl);
-            if (!existing) {
-                purlDiff[pkg.purl] = true;
-            }
-        }
-        for (const pkg of base.packages) {
-            const retained = head.packages.find(headPkg => headPkg.purl === pkg.purl);
-            if (!retained) {
-                purlDiff[pkg.purl] = false;
-            }
-        }
-        return purlDiff;
     }
 }
 exports.GitHub = GitHub;
@@ -315,6 +420,36 @@ async function run() {
     }
 }
 run();
+
+
+/***/ }),
+
+/***/ 6228:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Vulnerability = exports.Package = void 0;
+const packageurl_js_1 = __nccwpck_require__(8915);
+class Package {
+    constructor(purl) {
+        this.purl = purl;
+    }
+    key() {
+        return new packageurl_js_1.PackageURL(this.purl.type, this.purl.namespace, this.purl.name, null, null, null).toString();
+    }
+}
+exports.Package = Package;
+class Vulnerability {
+    constructor(cve) {
+        this.cve = cve;
+    }
+    key() {
+        return this.cve;
+    }
+}
+exports.Vulnerability = Vulnerability;
 
 
 /***/ }),
@@ -12375,6 +12510,229 @@ function onceStrict (fn) {
   f.called = false
   return f
 }
+
+
+/***/ }),
+
+/***/ 8915:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+/*!
+Copyright (c) the purl authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+const PackageURL = __nccwpck_require__(8749);
+
+module.exports = {
+  PackageURL
+};
+
+
+/***/ }),
+
+/***/ 8749:
+/***/ ((module) => {
+
+/*!
+Copyright (c) the purl authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+class PackageURL {
+
+  constructor(type, namespace, name, version, qualifiers, subpath) {
+    let required = { 'type': type, 'name': name };
+    Object.keys(required).forEach(key => {
+      if (!required[key]) {
+        throw new Error('Invalid purl: "' + key + '" is a required field.');
+      }
+    });
+
+    let strings = { 'type': type, 'namespace': namespace, 'name': name, 'versions': version, 'subpath': subpath };
+    Object.keys(strings).forEach(key => {
+      if (strings[key] && typeof strings[key] === 'string' || !strings[key]) {
+        return;
+      }
+      throw new Error('Invalid purl: "' + key + '" argument must be a string.');
+    });
+
+    if (qualifiers) {
+      if (typeof qualifiers !== 'object') {
+        throw new Error('Invalid purl: "qualifiers" argument must be a dictionary.');
+      }
+      Object.keys(qualifiers).forEach(key => {
+        if (!/^[a-z]+$/i.test(key) && !/[\.-_]/.test(key)) {
+          throw new Error('Invalid purl: qualifier "' + key + '" contains an illegal character.');
+        }
+      });
+    }
+
+    this.type = type;
+    this.name = name;
+    this.namespace = namespace;
+    this.version = version;
+    this.qualifiers = qualifiers;
+    this.subpath = subpath;
+  }
+
+  _handlePyPi() {
+    this.name = this.name.toLowerCase().replace(/_/g, '-');
+  }
+
+  toString() {
+    var purl = ['pkg:', this.type, '/'];
+
+    if (this.type === 'pypi') {
+      this._handlePyPi();
+    }
+
+    if (this.namespace) {
+      purl.push(
+        encodeURIComponent(this.namespace)
+          .replace(/%3A/g, ':')
+          .replace(/%2F/g, '/')
+        );
+      purl.push('/');
+    }
+
+    purl.push(encodeURIComponent(this.name).replace('%3A', ':'));
+
+    if (this.version) {
+      purl.push('@');
+      purl.push(encodeURIComponent(this.version).replace('%3A', ':'));
+    }
+
+    if (this.qualifiers) {
+      purl.push('?');
+
+      let qualifiers = this.qualifiers;
+      let qualifierString = [];
+      Object.keys(qualifiers).sort().forEach(key => {
+        qualifierString.push(encodeURIComponent(key).replace('%3A', ':') + '=' + encodeURI(qualifiers[key]));
+      });
+
+      purl.push(qualifierString.join('&'));
+    }
+
+    if (this.subpath) {
+      purl.push('#');
+      purl.push(encodeURI(this.subpath));
+    }
+
+    return purl.join('');
+  }
+
+  static fromString(purl) {
+    if (!purl || !typeof purl === 'string' || !purl.trim()) {
+      throw new Error('A purl string argument is required.');
+    }
+
+    var [scheme, remainder] = purl.split(':');
+    if (scheme !== 'pkg') {
+      throw new Error('purl is missing the required "pkg" scheme component.');
+    }
+    // this strip '/, // and /// as possible in :// or :///
+    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
+    remainder = remainder.trim().replace(/^\/+/g, '');
+
+    let type = remainder.split('/')[0];
+    var remainder = remainder.split('/').slice(1).join('/');
+    if (!type || !remainder) {
+      throw new Error('purl is missing the required "type" component.');
+    }
+
+    let url = new URL(purl);
+
+    let qualifiers = null;
+    url.searchParams.forEach((value, key) => {
+      if (!qualifiers) {
+        qualifiers = {};
+      }
+      qualifiers[key] = value;
+    });
+    let subpath = url.hash;
+    if (subpath.indexOf('#') === 0) {
+      subpath = subpath.substring(1);
+    }
+    if (subpath.length === 0) {
+      subpath = null;
+    }
+
+    if (url.username !== '' || url.password !== '') {
+      throw new Error('Invalid purl: cannot contain a "user:pass@host:port"');
+    }
+
+    // this strip '/, // and /// as possible in :// or :///
+    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
+    let path = url.pathname.trim().replace(/^\/+/g, '');
+
+    // version is optional - check for existence
+    let version = null;
+    if (path.includes('@')) {
+      let index = path.indexOf('@');
+      version = decodeURIComponent(path.substring(index + 1));
+      remainder = path.substring(0, index);
+    } else {
+      remainder = path;
+    }
+
+    // The 'remainder' should now consist of an optional namespace and the name
+    let remaining = remainder.split('/').slice(1);
+    let name = null;
+    let namespace = null;
+    if (remaining.length > 1) {
+      let nameIndex = remaining.length - 1;
+      let namespaceComponents = remaining.slice(0, nameIndex);
+      name = decodeURIComponent(remaining[nameIndex]);
+      namespace = decodeURIComponent(namespaceComponents.join('/'));
+    } else if (remaining.length === 1) {
+      name = decodeURIComponent(remaining[0]);
+    }
+
+    if (name === '') {
+      throw new Error('purl is missing the required "name" component.');
+    }
+
+    return new PackageURL(type, namespace, name, version, qualifiers, subpath);
+  }
+
+};
+
+module.exports = PackageURL;
 
 
 /***/ }),
