@@ -47,21 +47,21 @@ export class GitHub {
       body += '|---------|-----|-----|\n'
 
       for (const pkg of pkgDiff.added) {
-        body += `| \`${pkg.key()}\` `
+        body += `| \`${decodeURIComponent(pkg.key())}\` `
         body += `| `
         body += `| \`${pkg.purl.version}\` `
         body += `|\n`
       }
 
       for (const pkg of pkgDiff.removed) {
-        body += `| \`${pkg.key()}\` `
+        body += `| \`${decodeURIComponent(pkg.key())}\` `
         body += `| \`${pkg.purl.version}\` `
         body += `| `
         body += `|\n`
       }
 
       for (const pkg of pkgDiff.changed) {
-        body += `| \`${pkg.left.key()}\` `
+        body += `| \`${decodeURIComponent(pkg.left.key())}\` `
         body += `| \`${pkg.left.purl.version}\` `
         body += `| \`${pkg.right.purl.version}\` `
         body += `|\n`

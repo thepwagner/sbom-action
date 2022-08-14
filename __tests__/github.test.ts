@@ -1,4 +1,5 @@
 import {describe, expect, it} from '@jest/globals'
+import {assert} from 'console'
 import {PackageURL} from 'packageurl-js'
 import {GitHub} from '../src/github'
 import {Package, SBOM, Vulnerability} from '../src/sbom'
@@ -51,6 +52,21 @@ describe('GitHub', () => {
         expect(body).toContain('Packages')
         expect(body).toContain('| `pkg:deb/debian/adduser` | `3.118` | |')
         expect(body).not.toContain('Vulnerabilities')
+      })
+
+      it('decodes packages', () => {
+        const npmPkg = new Package(
+          PackageURL.fromString('pkg:npm/%40types/node@18.7.3')
+        )
+        const oneNpmPkg: SBOM = {
+          imageID: 'one-npm',
+          imageDigest: 'digest4',
+          packages: [npmPkg],
+          vulnerabilities: []
+        }
+        const body = gh.renderBody(emptyBOM, oneNpmPkg)
+        expect(body).toContain('pkg:npm/@types/node')
+        expect(body).not.toContain('pkg:npm/%40types/node')
       })
     })
 
