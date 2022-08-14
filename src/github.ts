@@ -56,7 +56,7 @@ export class GitHub {
     }
 
     core.info(`Compared SBOM vulnerabilities ${JSON.stringify(vulnDiff)}`)
-    if (!pkgDiff.empty()) {
+    if (!vulnDiff.empty()) {
       body += '#### ⚠️ Vulnerabilities\n\n'
       if (vulnDiff.added.length > 0) {
         body += '**Detected**:\n\n'
