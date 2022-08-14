@@ -312,10 +312,22 @@ class GitHub {
     }
     async postDiff(event, base, head) {
         core.info(`Comparing SBOMs ${base} ${head}`);
+        const body = this.renderBody(base, head);
+        if (body === '') {
+            return;
+        }
+        await this.gh.rest.issues.createComment({
+            owner: event.repository.owner.login,
+            repo: event.repository.name,
+            issue_number: event.pull_request.number,
+            body
+        });
+    }
+    renderBody(base, head) {
         const pkgDiff = new diff_1.Diff(base.packages, head.packages);
         const vulnDiff = new diff_1.Diff(base.vulnerabilities, head.vulnerabilities);
         if (pkgDiff.empty() && vulnDiff.empty()) {
-            return;
+            return '';
         }
         let body = '### SBOM diff\n\n';
         body += `Base: \`${base.imageID}\`\n`;
@@ -326,19 +338,19 @@ class GitHub {
             body += '| Package | Old | New |\n';
             body += '|---------|-----|-----|\n';
             for (const pkg of pkgDiff.added) {
-                body += `| \`${pkg.key()}\` `;
+                body += `| \`${decodeURIComponent(pkg.key())}\` `;
                 body += `| `;
                 body += `| \`${pkg.purl.version}\` `;
                 body += `|\n`;
             }
             for (const pkg of pkgDiff.removed) {
-                body += `| \`${pkg.key()}\` `;
+                body += `| \`${decodeURIComponent(pkg.key())}\` `;
                 body += `| \`${pkg.purl.version}\` `;
                 body += `| `;
                 body += `|\n`;
             }
             for (const pkg of pkgDiff.changed) {
-                body += `| \`${pkg.left.key()}\` `;
+                body += `| \`${decodeURIComponent(pkg.left.key())}\` `;
                 body += `| \`${pkg.left.purl.version}\` `;
                 body += `| \`${pkg.right.purl.version}\` `;
                 body += `|\n`;
@@ -346,7 +358,7 @@ class GitHub {
             body += '\n\n';
         }
         core.info(`Compared SBOM vulnerabilities ${JSON.stringify(vulnDiff)}`);
-        if (!pkgDiff.empty()) {
+        if (!vulnDiff.empty()) {
             body += '#### ⚠️ Vulnerabilities\n\n';
             if (vulnDiff.added.length > 0) {
                 body += '**Detected**:\n\n';
@@ -363,12 +375,7 @@ class GitHub {
                 body += '\n';
             }
         }
-        await this.gh.rest.issues.createComment({
-            owner: event.repository.owner.login,
-            repo: event.repository.name,
-            issue_number: event.pull_request.number,
-            body
-        });
+        return body;
     }
 }
 exports.GitHub = GitHub;

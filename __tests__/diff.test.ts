@@ -1,6 +1,6 @@
 import {Diff} from '../src/diff'
 import {Package} from '../src/sbom'
-import {describe, expect, jest, it} from '@jest/globals'
+import {describe, expect, it} from '@jest/globals'
 import {PackageURL} from 'packageurl-js'
 
 describe('Diff', () => {

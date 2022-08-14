@@ -14,11 +14,25 @@ export class GitHub {
   ): Promise<void> {
     core.info(`Comparing SBOMs ${base} ${head}`)
 
+    const body = this.renderBody(base, head)
+    if (body === '') {
+      return
+    }
+
+    await this.gh.rest.issues.createComment({
+      owner: event.repository.owner.login,
+      repo: event.repository.name,
+      issue_number: event.pull_request.number,
+      body
+    })
+  }
+
+  renderBody(base: SBOM, head: SBOM): string {
     const pkgDiff = new Diff(base.packages, head.packages)
     const vulnDiff = new Diff(base.vulnerabilities, head.vulnerabilities)
 
     if (pkgDiff.empty() && vulnDiff.empty()) {
-      return
+      return ''
     }
 
     let body = '### SBOM diff\n\n'
@@ -33,21 +47,21 @@ export class GitHub {
       body += '|---------|-----|-----|\n'
 
       for (const pkg of pkgDiff.added) {
-        body += `| \`${pkg.key()}\` `
+        body += `| \`${decodeURIComponent(pkg.key())}\` `
         body += `| `
         body += `| \`${pkg.purl.version}\` `
         body += `|\n`
       }
 
       for (const pkg of pkgDiff.removed) {
-        body += `| \`${pkg.key()}\` `
+        body += `| \`${decodeURIComponent(pkg.key())}\` `
         body += `| \`${pkg.purl.version}\` `
         body += `| `
         body += `|\n`
       }
 
       for (const pkg of pkgDiff.changed) {
-        body += `| \`${pkg.left.key()}\` `
+        body += `| \`${decodeURIComponent(pkg.left.key())}\` `
         body += `| \`${pkg.left.purl.version}\` `
         body += `| \`${pkg.right.purl.version}\` `
         body += `|\n`
@@ -56,7 +70,7 @@ export class GitHub {
     }
 
     core.info(`Compared SBOM vulnerabilities ${JSON.stringify(vulnDiff)}`)
-    if (!pkgDiff.empty()) {
+    if (!vulnDiff.empty()) {
       body += '#### ⚠️ Vulnerabilities\n\n'
       if (vulnDiff.added.length > 0) {
         body += '**Detected**:\n\n'
@@ -74,11 +88,6 @@ export class GitHub {
       }
     }
 
-    await this.gh.rest.issues.createComment({
-      owner: event.repository.owner.login,
-      repo: event.repository.name,
-      issue_number: event.pull_request.number,
-      body
-    })
+    return body
   }
 }
