@@ -29,7 +29,7 @@
     "@actions/exec": "1.1.1",
     "@actions/github": "5.0.3",
     "@octokit/rest": "19.0.4",
-    "@octokit/webhooks-types": "6.3.5",
+    "@octokit/webhooks-types": "6.3.6",
     "mustache": "4.2.0",
     "packageurl-js": "0.0.7"
   },
