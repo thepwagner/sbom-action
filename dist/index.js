@@ -12590,7 +12590,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+const KnownQualifierNames = Object.freeze({
+  // known qualifiers as defined here:
+  // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs
+  RepositoryUrl: 'repository_url',
+  DownloadUrl: 'download_url',
+  VcsUrl: 'vcs_url',
+  FileName: 'file_name',
+  Checksum: 'checksum'
+});
+
 class PackageURL {
+
+  static get KnownQualifierNames() {
+    return KnownQualifierNames;
+  }
 
   constructor(type, namespace, name, version, qualifiers, subpath) {
     let required = { 'type': type, 'name': name };
@@ -12679,7 +12694,7 @@ class PackageURL {
       throw new Error('A purl string argument is required.');
     }
 
-    var [scheme, remainder] = purl.split(':');
+    let [scheme, remainder] = purl.split(':', 2);
     if (scheme !== 'pkg') {
       throw new Error('purl is missing the required "pkg" scheme component.');
     }
@@ -12687,8 +12702,8 @@ class PackageURL {
     // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
     remainder = remainder.trim().replace(/^\/+/g, '');
 
-    let type = remainder.split('/')[0];
-    var remainder = remainder.split('/').slice(1).join('/');
+    let type
+    [type, remainder] = remainder.split('/', 2);
     if (!type || !remainder) {
       throw new Error('purl is missing the required "type" component.');
     }
