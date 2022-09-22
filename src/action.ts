@@ -4,6 +4,7 @@ import {SBOMLoader, SBOMParser} from './sbom'
 import type {PullRequestEvent, WebhookEvent} from '@octokit/webhooks-types'
 import {CycloneDXParser} from './cyclonedx'
 import {readFile} from 'fs/promises'
+import {Diff} from './diff'
 import {GitHub} from './github'
 import {Octokit} from '@octokit/rest'
 
@@ -46,6 +47,15 @@ export class Handler {
     const baseSBOM = await this.loader.load(baseImageID)
 
     await this.gh.postDiff(event, baseSBOM, localSBOM)
+
+    const pkgDiff = new Diff(baseSBOM.packages, localSBOM.packages)
+    const vulnDiff = new Diff(
+      baseSBOM.vulnerabilities,
+      localSBOM.vulnerabilities
+    )
+
+    core.setOutput('packages-changed', !pkgDiff.empty())
+    core.setOutput('vulnerabilities-changed', !vulnDiff.empty())
   }
 }
 

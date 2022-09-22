@@ -1,5 +1,4 @@
 import {describe, expect, it} from '@jest/globals'
-import {assert} from 'console'
 import {PackageURL} from 'packageurl-js'
 import {GitHub} from '../src/github'
 import {Package, SBOM, Vulnerability} from '../src/sbom'
