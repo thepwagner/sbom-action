@@ -150,7 +150,12 @@ class CosignSBOMLoader {
         throw new Error('TODO: implement loading attached SBOMs');
     }
     async loadFromAttestation(imageID) {
-        const out = await this.exec('cosign', ['verify-attestation', imageID]);
+        const out = await this.exec('cosign', [
+            'verify-attestation',
+            '--type',
+            'cyclonedx',
+            imageID
+        ]);
         const attestation = JSON.parse(out);
         const payload = Buffer.from(attestation.payload, 'base64').toString();
         const predicate = JSON.parse(payload);
