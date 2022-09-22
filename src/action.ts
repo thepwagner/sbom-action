@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import {CosignSBOMLoader} from './cosign'
-import {SBOMLoader, SBOMParser} from './sbom'
+import {SBOM, SBOMLoader, SBOMParser} from './sbom'
 import type {PullRequestEvent, WebhookEvent} from '@octokit/webhooks-types'
 import {CycloneDXParser} from './cyclonedx'
 import {readFile} from 'fs/promises'
@@ -22,6 +22,10 @@ export class Handler {
       case 'pull_request':
         return this.onPullRequestEvent(event as PullRequestEvent)
 
+      case 'schedule':
+      case 'workflow_dispatch':
+        return this.onScheduleEvent()
+
       case 'test':
       case '':
         return
@@ -37,16 +41,14 @@ export class Handler {
         return
     }
 
-    const localSBOMPath = core.getInput('sbom')
-    const localSBOMdata = await readFile(localSBOMPath, 'utf8')
-    core.info(`Loading local SBOM: ${localSBOMPath}`)
-    const localSBOM = this.parser.parse(localSBOMdata)
-
-    const baseImageID = core.getInput('base-image')
-    core.info(`Loading base image: ${baseImageID}`)
-    const baseSBOM = await this.loader.load(baseImageID)
-
+    const localSBOM = await this.loadLocalSBOM()
+    const baseSBOM = await this.loadBaseSBOM()
     await this.gh.postDiff(event, baseSBOM, localSBOM)
+  }
+
+  private async onScheduleEvent(): Promise<void> {
+    const localSBOM = await this.loadLocalSBOM()
+    const baseSBOM = await this.loadBaseSBOM()
 
     const pkgDiff = new Diff(baseSBOM.packages, localSBOM.packages)
     const vulnDiff = new Diff(
@@ -56,6 +58,19 @@ export class Handler {
 
     core.setOutput('packages-changed', !pkgDiff.empty())
     core.setOutput('vulnerabilities-changed', !vulnDiff.empty())
+  }
+
+  private async loadLocalSBOM(): Promise<SBOM> {
+    const localSBOMPath = core.getInput('sbom')
+    const localSBOMdata = await readFile(localSBOMPath, 'utf8')
+    core.info(`Loading local SBOM: ${localSBOMPath}`)
+    return this.parser.parse(localSBOMdata)
+  }
+
+  private async loadBaseSBOM(): Promise<SBOM> {
+    const baseImageID = core.getInput('base-image')
+    core.info(`Loading base image: ${baseImageID}`)
+    return await this.loader.load(baseImageID)
   }
 }
 

@@ -49,6 +49,9 @@ class Handler {
         switch (eventName) {
             case 'pull_request':
                 return this.onPullRequestEvent(event);
+            case 'schedule':
+            case 'workflow_dispatch':
+                return this.onScheduleEvent();
             case 'test':
             case '':
                 return;
@@ -62,18 +65,28 @@ class Handler {
             default:
                 return;
         }
-        const localSBOMPath = core.getInput('sbom');
-        const localSBOMdata = await (0, promises_1.readFile)(localSBOMPath, 'utf8');
-        core.info(`Loading local SBOM: ${localSBOMPath}`);
-        const localSBOM = this.parser.parse(localSBOMdata);
-        const baseImageID = core.getInput('base-image');
-        core.info(`Loading base image: ${baseImageID}`);
-        const baseSBOM = await this.loader.load(baseImageID);
+        const localSBOM = await this.loadLocalSBOM();
+        const baseSBOM = await this.loadBaseSBOM();
         await this.gh.postDiff(event, baseSBOM, localSBOM);
+    }
+    async onScheduleEvent() {
+        const localSBOM = await this.loadLocalSBOM();
+        const baseSBOM = await this.loadBaseSBOM();
         const pkgDiff = new diff_1.Diff(baseSBOM.packages, localSBOM.packages);
         const vulnDiff = new diff_1.Diff(baseSBOM.vulnerabilities, localSBOM.vulnerabilities);
         core.setOutput('packages-changed', !pkgDiff.empty());
         core.setOutput('vulnerabilities-changed', !vulnDiff.empty());
+    }
+    async loadLocalSBOM() {
+        const localSBOMPath = core.getInput('sbom');
+        const localSBOMdata = await (0, promises_1.readFile)(localSBOMPath, 'utf8');
+        core.info(`Loading local SBOM: ${localSBOMPath}`);
+        return this.parser.parse(localSBOMdata);
+    }
+    async loadBaseSBOM() {
+        const baseImageID = core.getInput('base-image');
+        core.info(`Loading base image: ${baseImageID}`);
+        return await this.loader.load(baseImageID);
     }
 }
 exports.Handler = Handler;
