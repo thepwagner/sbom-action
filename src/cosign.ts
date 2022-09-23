@@ -34,7 +34,12 @@ export class CosignSBOMLoader implements SBOMLoader {
   }
 
   private async loadFromAttestation(imageID: string): Promise<SBOM> {
-    const out = await this.exec('cosign', ['verify-attestation', imageID])
+    const out = await this.exec('cosign', [
+      'verify-attestation',
+      '--type',
+      'cyclonedx',
+      imageID
+    ])
 
     const attestation = JSON.parse(out) as Attestation
     const payload = Buffer.from(attestation.payload, 'base64').toString()

@@ -20,6 +20,8 @@ describe('CosignSBOMLoader', () => {
       const sbom = await loader.load(imageID)
       expect(mockExec).toHaveBeenCalledWith('cosign', [
         'verify-attestation',
+        '--type',
+        'cyclonedx',
         imageID
       ])
       expect(sbom.packages).toHaveLength(96)
@@ -36,6 +38,8 @@ describe('CosignSBOMLoader', () => {
       const sbom = await loader.load(imageID)
       expect(mockExec).toHaveBeenCalledWith('cosign', [
         'verify-attestation',
+        '--type',
+        'cyclonedx',
         imageID
       ])
       expect(sbom.packages).toHaveLength(96)

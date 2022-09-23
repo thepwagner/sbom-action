@@ -35,6 +35,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const cosign_1 = __nccwpck_require__(4816);
 const cyclonedx_1 = __nccwpck_require__(2348);
 const promises_1 = __nccwpck_require__(3292);
+const diff_1 = __nccwpck_require__(2484);
 const github_1 = __nccwpck_require__(5928);
 const rest_1 = __nccwpck_require__(5375);
 class Handler {
@@ -48,6 +49,9 @@ class Handler {
         switch (eventName) {
             case 'pull_request':
                 return this.onPullRequestEvent(event);
+            case 'schedule':
+            case 'workflow_dispatch':
+                return this.onScheduleEvent();
             case 'test':
             case '':
                 return;
@@ -61,14 +65,28 @@ class Handler {
             default:
                 return;
         }
+        const localSBOM = await this.loadLocalSBOM();
+        const baseSBOM = await this.loadBaseSBOM();
+        await this.gh.postDiff(event, baseSBOM, localSBOM);
+    }
+    async onScheduleEvent() {
+        const localSBOM = await this.loadLocalSBOM();
+        const baseSBOM = await this.loadBaseSBOM();
+        const pkgDiff = new diff_1.Diff(baseSBOM.packages, localSBOM.packages);
+        const vulnDiff = new diff_1.Diff(baseSBOM.vulnerabilities, localSBOM.vulnerabilities);
+        core.setOutput('packages-changed', !pkgDiff.empty());
+        core.setOutput('vulnerabilities-changed', !vulnDiff.empty());
+    }
+    async loadLocalSBOM() {
         const localSBOMPath = core.getInput('sbom');
         const localSBOMdata = await (0, promises_1.readFile)(localSBOMPath, 'utf8');
         core.info(`Loading local SBOM: ${localSBOMPath}`);
-        const localSBOM = this.parser.parse(localSBOMdata);
+        return this.parser.parse(localSBOMdata);
+    }
+    async loadBaseSBOM() {
         const baseImageID = core.getInput('base-image');
         core.info(`Loading base image: ${baseImageID}`);
-        const baseSBOM = await this.loader.load(baseImageID);
-        await this.gh.postDiff(event, baseSBOM, localSBOM);
+        return await this.loader.load(baseImageID);
     }
 }
 exports.Handler = Handler;
@@ -132,7 +150,12 @@ class CosignSBOMLoader {
         throw new Error('TODO: implement loading attached SBOMs');
     }
     async loadFromAttestation(imageID) {
-        const out = await this.exec('cosign', ['verify-attestation', imageID]);
+        const out = await this.exec('cosign', [
+            'verify-attestation',
+            '--type',
+            'cyclonedx',
+            imageID
+        ]);
         const attestation = JSON.parse(out);
         const payload = Buffer.from(attestation.payload, 'base64').toString();
         const predicate = JSON.parse(payload);
