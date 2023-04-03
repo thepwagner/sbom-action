@@ -31,7 +31,7 @@
     "@octokit/rest": "19.0.7",
     "@octokit/webhooks-types": "6.10.0",
     "mustache": "4.2.0",
-    "packageurl-js": "1.0.0"
+    "packageurl-js": "1.0.2"
   },
   "devDependencies": {
     "@types/mustache": "4.2.2",
