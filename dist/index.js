@@ -12701,7 +12701,7 @@ class PackageURL {
   }
 
   toString() {
-    var purl = ['pkg:', this.type, '/'];
+    var purl = ['pkg:', encodeURIComponent(this.type), '/'];
 
     if (this.type === 'pypi') {
       this._handlePyPi();
@@ -12716,11 +12716,11 @@ class PackageURL {
       purl.push('/');
     }
 
-    purl.push(encodeURIComponent(this.name).replace('%3A', ':'));
+    purl.push(encodeURIComponent(this.name).replace(/%3A/g, ':'));
 
     if (this.version) {
       purl.push('@');
-      purl.push(encodeURIComponent(this.version).replace('%3A', ':'));
+      purl.push(encodeURIComponent(this.version).replace(/%3A/g, ':'));
     }
 
     if (this.qualifiers) {
@@ -12729,7 +12729,11 @@ class PackageURL {
       let qualifiers = this.qualifiers;
       let qualifierString = [];
       Object.keys(qualifiers).sort().forEach(key => {
-        qualifierString.push(encodeURIComponent(key).replace('%3A', ':') + '=' + encodeURI(qualifiers[key]));
+        qualifierString.push(
+          encodeURIComponent(key).replace(/%3A/g, ':')
+          + '='
+          + encodeURIComponent(qualifiers[key]).replace(/%2F/g, '/')
+        );
       });
 
       purl.push(qualifierString.join('&'));
@@ -12737,14 +12741,16 @@ class PackageURL {
 
     if (this.subpath) {
       purl.push('#');
-      purl.push(encodeURI(this.subpath));
+      purl.push(encodeURIComponent(this.subpath)
+        .replace(/%3A/g, ':')
+        .replace(/%2F/g, '/'));
     }
 
     return purl.join('');
   }
 
   static fromString(purl) {
-    if (!purl || !typeof purl === 'string' || !purl.trim()) {
+    if (!purl || typeof purl !== 'string' || !purl.trim()) {
       throw new Error('A purl string argument is required.');
     }
 
@@ -12761,6 +12767,7 @@ class PackageURL {
     if (!type || !remainder) {
       throw new Error('purl is missing the required "type" component.');
     }
+    type = decodeURIComponent(type)
 
     let url = new URL(purl);
 
@@ -12775,9 +12782,9 @@ class PackageURL {
     if (subpath.indexOf('#') === 0) {
       subpath = subpath.substring(1);
     }
-    if (subpath.length === 0) {
-      subpath = null;
-    }
+    subpath = subpath.length === 0
+      ? null
+      : decodeURIComponent(subpath)
 
     if (url.username !== '' || url.password !== '') {
       throw new Error('Invalid purl: cannot contain a "user:pass@host:port"');
