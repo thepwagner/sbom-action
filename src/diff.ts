@@ -2,7 +2,10 @@ import {HasKey} from './sbom'
 import {isDeepStrictEqual} from 'util'
 
 export class DiffEntry<T> {
-  constructor(readonly left: T, readonly right: T) {}
+  constructor(
+    readonly left: T,
+    readonly right: T
+  ) {}
 }
 export class Diff<T extends HasKey> {
   readonly added: T[] = []
