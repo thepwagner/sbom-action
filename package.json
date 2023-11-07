@@ -34,7 +34,7 @@
     "packageurl-js": "1.0.2"
   },
   "devDependencies": {
-    "@types/mustache": "4.2.4",
+    "@types/mustache": "4.2.5",
     "@types/node": "16.18.60",
     "@typescript-eslint/parser": "^6.2.0",
     "@vercel/ncc": "0.38.1",
