@@ -9,7 +9,14 @@ inputs:
     description: 'remote image for sbom for comparison'
     default: ghcr.io/${{github.repository}}:latest
   token:
+    description: GitHub token
     default: ${{ github.token }}
+  certificate-identity-regexp:
+    description: 'regexp to match certificate identity'
+    default: '.*'
+  certificate-oidc-issuer-regexp:
+    description: 'regexp to match certificate identity'
+    default: '.*'
 
 runs:
   using: 'node16'

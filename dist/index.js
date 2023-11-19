@@ -94,7 +94,7 @@ function getLocalParser() {
     return new cyclonedx_1.CycloneDXParser();
 }
 function getRemoteLoader() {
-    return new cosign_1.CosignSBOMLoader();
+    return new cosign_1.CosignSBOMLoader(true, core.getInput('certificate-identity-regexp'), core.getInput('certificate-oidc-issuer-regexp'));
 }
 function getGitHub() {
     const auth = core.getInput('token');
@@ -121,10 +121,11 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CosignSBOMLoader = void 0;
 const cyclonedx_1 = __nccwpck_require__(2348);
 const exec_1 = __nccwpck_require__(1514);
-// TODO: verification options for the attestation - issued by the Actions workflow
 class CosignSBOMLoader {
-    constructor(fromAttestations = true) {
+    constructor(fromAttestations = true, certificateIdentityRegExp = '.*', certificateOidcIssuerRegExp = '.*') {
         this.fromAttestations = fromAttestations;
+        this.certificateIdentityRegExp = certificateIdentityRegExp;
+        this.certificateOidcIssuerRegExp = certificateOidcIssuerRegExp;
         this.cyclonedx = new cyclonedx_1.CycloneDXParser();
         /** Wrap @actions/exec, awkwardly accessible for tests to replace. */
         this.exec = async (commandLine, args) => {
@@ -136,8 +137,7 @@ class CosignSBOMLoader {
                     }
                 },
                 env: {
-                    PATH: process.env.PATH || '',
-                    COSIGN_EXPERIMENTAL: '1'
+                    PATH: process.env.PATH || ''
                 }
             });
             return out;
@@ -154,6 +154,10 @@ class CosignSBOMLoader {
             'verify-attestation',
             '--type',
             'cyclonedx',
+            '--certificate-identity-regexp',
+            this.certificateIdentityRegExp,
+            '--certificate-oidc-issuer-regexp',
+            this.certificateOidcIssuerRegExp,
             imageID
         ]);
         const attestation = JSON.parse(out);
@@ -165,6 +169,8 @@ class CosignSBOMLoader {
                 return this.cyclonedx.parse(predicate.predicate['Data']);
             case 'https://cyclonedx.org/schema':
                 return this.cyclonedx.extract(predicate.predicate['Data']);
+            case 'https://cyclonedx.org/bom':
+                return this.cyclonedx.extract(predicate.predicate);
             // TODO: spdx?
             default:
                 throw new Error(`Unsupported predicate: ${predicate.predicateType}`);
