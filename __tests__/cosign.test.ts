@@ -22,6 +22,10 @@ describe('CosignSBOMLoader', () => {
         'verify-attestation',
         '--type',
         'cyclonedx',
+        '--certificate-identity-regexp',
+        '.*',
+        '--certificate-oidc-issuer-regexp',
+        '.*',
         imageID
       ])
       expect(sbom.packages).toHaveLength(96)
@@ -40,6 +44,10 @@ describe('CosignSBOMLoader', () => {
         'verify-attestation',
         '--type',
         'cyclonedx',
+        '--certificate-identity-regexp',
+        '.*',
+        '--certificate-oidc-issuer-regexp',
+        '.*',
         imageID
       ])
       expect(sbom.packages).toHaveLength(96)
