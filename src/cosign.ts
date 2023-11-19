@@ -56,6 +56,8 @@ export class CosignSBOMLoader implements SBOMLoader {
         return this.cyclonedx.parse(predicate.predicate['Data'])
       case 'https://cyclonedx.org/schema':
         return this.cyclonedx.extract(predicate.predicate['Data'] as CycloneBOM)
+      case 'https://cyclonedx.org/bom':
+        return this.cyclonedx.extract(predicate.predicate as CycloneBOM)
       // TODO: spdx?
       default:
         throw new Error(`Unsupported predicate: ${predicate.predicateType}`)

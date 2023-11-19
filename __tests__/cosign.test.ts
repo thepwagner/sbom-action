@@ -52,5 +52,27 @@ describe('CosignSBOMLoader', () => {
       ])
       expect(sbom.packages).toHaveLength(96)
     })
+
+    it('loads cyclonedx from cyclonedx/bom predicate', async () => {
+      const attestation = await readFile(
+        '__tests__/fixtures/cyclonedx.cyclonebom.json',
+        'utf8'
+      )
+      mockExec.mockReturnValue(attestation)
+      const imageID =
+        'ghcr.io/thepwagner-org/debian-bullseye:c8c63081113e24f0af78737451a8d916444291ba'
+      const sbom = await loader.load(imageID)
+      expect(mockExec).toHaveBeenCalledWith('cosign', [
+        'verify-attestation',
+        '--type',
+        'cyclonedx',
+        '--certificate-identity-regexp',
+        '.*',
+        '--certificate-oidc-issuer-regexp',
+        '.*',
+        imageID
+      ])
+      expect(sbom.packages).toHaveLength(88)
+    })
   })
 })
