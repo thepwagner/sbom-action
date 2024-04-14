@@ -232,7 +232,19 @@ class CycloneDXParser {
             if (!component.purl) {
                 continue;
             }
-            const purl = packageurl_js_1.PackageURL.fromString(component.purl);
+            // Fix any versions that aren't encoded
+            let purlRaw = component.purl;
+            const url = new URL(purlRaw);
+            const path = url.pathname.trim().replace(/^\/+/g, '');
+            const index = path.indexOf('@');
+            if (index !== -1) {
+                const rawVersion = path.substring(index + 1);
+                const encodedVersion = encodeURIComponent(decodeURIComponent(rawVersion))
+                    .replace(/%3A/g, ':')
+                    .replace(/%2B/g, '+');
+                purlRaw = component.purl.replace(rawVersion, encodedVersion);
+            }
+            const purl = packageurl_js_1.PackageURL.fromString(purlRaw);
             purl.qualifiers = null; // the 'distro' qualifier is annoying, don't need any of them
             packages.push(new sbom_1.Package(purl));
         }
@@ -9437,12 +9449,21 @@ class PackageURL {
   _handlePyPi() {
     this.name = this.name.toLowerCase().replace(/_/g, '-');
   }
+  _handlePub() {
+    this.name = this.name.toLowerCase();
+    if (!/^[a-z0-9_]+$/i.test(this.name)) {
+      throw new Error('Invalid purl: contains an illegal character.');
+    }
+  }
 
   toString() {
     var purl = ['pkg:', encodeURIComponent(this.type), '/'];
 
     if (this.type === 'pypi') {
       this._handlePyPi();
+    }
+    if (this.type === 'pub') {
+      this._handlePub();
     }
 
     if (this.namespace) {
@@ -9458,7 +9479,7 @@ class PackageURL {
 
     if (this.version) {
       purl.push('@');
-      purl.push(encodeURIComponent(this.version).replace(/%3A/g, ':'));
+      purl.push(encodeURIComponent(this.version).replace(/%3A/g, ':').replace(/%2B/g,'+'));
     }
 
     if (this.qualifiers) {
@@ -9492,7 +9513,8 @@ class PackageURL {
       throw new Error('A purl string argument is required.');
     }
 
-    let [scheme, remainder] = purl.split(':', 2);
+    let scheme = purl.slice(0, purl.indexOf(':'))
+    let remainder = purl.slice(purl.indexOf(':') + 1)
     if (scheme !== 'pkg') {
       throw new Error('purl is missing the required "pkg" scheme component.');
     }
@@ -9536,7 +9558,18 @@ class PackageURL {
     let version = null;
     if (path.includes('@')) {
       let index = path.indexOf('@');
-      version = decodeURIComponent(path.substring(index + 1));
+      let rawVersion= path.substring(index + 1);
+      version = decodeURIComponent(rawVersion);
+
+      // Convert percent-encoded colons (:) back, to stay in line with the `toString`
+      // implementation of this library.
+      // https://github.com/package-url/packageurl-js/blob/58026c86978c6e356e5e07f29ecfdccbf8829918/src/package-url.js#L98C10-L98C10
+      let versionEncoded = encodeURIComponent(version).replace(/%3A/g, ':').replace(/%2B/g,'+');
+
+      if (rawVersion !== versionEncoded) {
+        throw new Error('Invalid purl: version must be percent-encoded');
+      }
+
       remainder = path.substring(0, index);
     } else {
       remainder = path;
