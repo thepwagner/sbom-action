@@ -2,8 +2,6 @@ import {SBOM, SBOMLoader} from './sbom'
 import {CycloneDXParser, CycloneBOM} from './cyclonedx'
 import {exec} from '@actions/exec'
 
-// TODO: verification options for the attestation - issued by the Actions workflow
-
 export class CosignSBOMLoader implements SBOMLoader {
   private cyclonedx = new CycloneDXParser()
 
@@ -17,14 +15,17 @@ export class CosignSBOMLoader implements SBOMLoader {
         }
       },
       env: {
-        PATH: process.env.PATH || '',
-        COSIGN_EXPERIMENTAL: '1'
+        PATH: process.env.PATH || ''
       }
     })
     return out
   }
 
-  constructor(private readonly fromAttestations = true) {}
+  constructor(
+    private readonly fromAttestations = true,
+    private readonly certificateIdentityRegExp = '.*',
+    private readonly certificateOidcIssuerRegExp = '.*'
+  ) {}
 
   async load(imageID: string): Promise<SBOM> {
     if (this.fromAttestations) {
@@ -38,6 +39,10 @@ export class CosignSBOMLoader implements SBOMLoader {
       'verify-attestation',
       '--type',
       'cyclonedx',
+      '--certificate-identity-regexp',
+      this.certificateIdentityRegExp,
+      '--certificate-oidc-issuer-regexp',
+      this.certificateOidcIssuerRegExp,
       imageID
     ])
 
@@ -51,6 +56,8 @@ export class CosignSBOMLoader implements SBOMLoader {
         return this.cyclonedx.parse(predicate.predicate['Data'])
       case 'https://cyclonedx.org/schema':
         return this.cyclonedx.extract(predicate.predicate['Data'] as CycloneBOM)
+      case 'https://cyclonedx.org/bom':
+        return this.cyclonedx.extract(predicate.predicate as CycloneBOM)
       // TODO: spdx?
       default:
         throw new Error(`Unsupported predicate: ${predicate.predicateType}`)

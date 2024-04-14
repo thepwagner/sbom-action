@@ -79,7 +79,11 @@ function getLocalParser(): SBOMParser {
 }
 
 function getRemoteLoader(): SBOMLoader {
-  return new CosignSBOMLoader()
+  return new CosignSBOMLoader(
+    true,
+    core.getInput('certificate-identity-regexp'),
+    core.getInput('certificate-oidc-issuer-regexp')
+  )
 }
 
 function getGitHub(): GitHub {
