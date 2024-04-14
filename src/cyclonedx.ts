@@ -48,7 +48,24 @@ export class CycloneDXParser implements SBOMParser {
       if (!component.purl) {
         continue
       }
-      const purl = PackageURL.fromString(component.purl)
+
+      // Fix any versions that aren't encoded
+      let purlRaw = component.purl
+      const url = new URL(purlRaw)
+      const path = url.pathname.trim().replace(/^\/+/g, '')
+      const index = path.indexOf('@')
+      if (index !== -1) {
+        const rawVersion = path.substring(index + 1)
+        const encodedVersion = encodeURIComponent(
+          decodeURIComponent(rawVersion)
+        )
+          .replace(/%3A/g, ':')
+          .replace(/%2B/g, '+')
+
+        purlRaw = component.purl.replace(rawVersion, encodedVersion)
+      }
+
+      const purl = PackageURL.fromString(purlRaw)
       purl.qualifiers = null // the 'distro' qualifier is annoying, don't need any of them
       packages.push(new Package(purl))
     }
