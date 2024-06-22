@@ -30,7 +30,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.newHandler = exports.Handler = void 0;
+exports.Handler = void 0;
+exports.newHandler = newHandler;
 const core = __importStar(__nccwpck_require__(2186));
 const cosign_1 = __nccwpck_require__(4816);
 const cyclonedx_1 = __nccwpck_require__(2348);
@@ -107,7 +108,6 @@ function newHandler() {
     const gh = getGitHub();
     return new Handler(parser, loader, gh);
 }
-exports.newHandler = newHandler;
 
 
 /***/ }),
